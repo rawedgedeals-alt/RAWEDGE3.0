@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RAWEDGE — RevenueLab Analytics</title>
+<style>
+:root{--bg:#050811;--panel:#091421;--line:#173044;--text:#f7fbff;--muted:#91a4b9;--green:#10e981;--yellow:#ffd21c;--cyan:#16d9ff;--pink:#ff38d1}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 0,rgba(0,255,120,.12),transparent 35rem),var(--bg);color:var(--text);font-family:Inter,Arial,sans-serif}.wrap{width:min(1180px,calc(100% - 28px));margin:auto;padding:28px 0 60px}.head{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}.logo{font-size:30px;font-weight:1000;letter-spacing:-2px}.logo span{color:var(--green)}.sub{color:var(--muted);font-size:13px;margin-top:5px}.panel{margin-top:20px;padding:18px;border:1px solid var(--line);border-radius:18px;background:rgba(9,20,33,.82)}.controls{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.controls label{display:block;color:var(--muted);font-size:11px;font-weight:800;margin-bottom:5px;text-transform:uppercase}.controls input,.controls select,.controls button{width:100%;padding:12px;border-radius:10px;border:1px solid #29445b;background:#06101b;color:var(--text);font:inherit}.controls button{border-color:var(--green);background:linear-gradient(135deg,#087d31,#0acb5c);color:#031008;font-weight:1000;cursor:pointer}.status{margin-top:12px;color:var(--muted);font-size:12px}.status.bad{color:#ff6b86}.metrics{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}.metric{padding:15px;border:1px solid var(--line);border-radius:14px;background:#07111d}.metric b{display:block;color:var(--green);font-size:10px;letter-spacing:1px;text-transform:uppercase}.metric strong{display:block;font-size:22px;margin-top:6px}.metric small{display:block;color:var(--muted);margin-top:3px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}.card h2{margin:0 0 12px;font-size:19px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:12px}th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--muted);font-size:10px;text-transform:uppercase}td strong{color:var(--green)}.empty{padding:20px;color:var(--muted);border:1px dashed #29445b;border-radius:12px}.note{color:var(--muted);font-size:11px;line-height:1.5}.pill{display:inline-block;padding:4px 7px;border-radius:999px;background:#102536;color:#b8c9d9}.danger{color:#ff7890}@media(max-width:850px){.controls{grid-template-columns:1fr 1fr}.metrics{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}}@media(max-width:500px){.controls{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr}.wrap{width:min(100% - 18px,700px)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div><div class="logo">RAW<span>EDGE</span> ANALYTICS</div><div class="sub">Private RevenueLab affiliate performance dashboard</div></div>
+    <div class="pill">LIVE API</div>
+  </header>
+
+  <section class="panel">
+    <div class="controls">
+      <div><label>From</label><input id="from" type="date"></div>
+      <div><label>To</label><input id="to" type="date"></div>
+      <div><label>Currency</label><select id="currency"><option>USD</option><option>EUR</option><option>GBP</option></select></div>
+      <div><label>Grouping</label><select id="group"><option value="D">Daily</option><option value="M">Monthly</option></select></div>
+      <div><label>Admin key</label><input id="key" type="password" autocomplete="off" placeholder="API access key"></div>
+    </div>
+    <div style="margin-top:10px"><button id="load">SYNC REVENUELAB</button></div>
+    <div id="status" class="status">Ready. Credentials remain server-side.</div>
+  </section>
+
+  <section class="panel">
+    <div class="metrics">
+      <div class="metric"><b>Clicks</b><strong id="clicks">—</strong><small>RevenueLab stats</small></div>
+      <div class="metric"><b>Registrations</b><strong id="regs">—</strong><small>RevenueLab stats</small></div>
+      <div class="metric"><b>New deposits</b><strong id="ndc">—</strong><small>NDC</small></div>
+      <div class="metric"><b>Deposits</b><strong id="deposits">—</strong><small>Purchase amount</small></div>
+      <div class="metric"><b>Net revenue</b><strong id="net">—</strong><small id="currencyLabel">USD</small></div>
+      <div class="metric"><b>Reconciled earnings</b><strong id="earnings">—</strong><small>Publisher earnings</small></div>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="panel card"><h2>Offer earnings</h2><div id="offers" class="table-wrap"><div class="empty">Sync to load offer-level earnings.</div></div></div>
+    <div class="panel card"><h2>Traffic / daily stats</h2><div id="traffic" class="table-wrap"><div class="empty">Sync to load RevenueLab statistics.</div></div></div>
+  </section>
+
+  <section class="panel note">
+    <strong>Security:</strong> RevenueLab credentials are never sent to the browser. They belong in server environment variables. The admin key is only an additional gate for the RawEdge API route. Do not paste a RevenueLab bearer token into this page.
+  </section>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const now=new Date();
+const iso=d=>new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+const start=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),1));
+$('from').value=iso(start);$('to').value=iso(now);
+const fmt=n=>typeof n==='number'?n.toLocaleString(undefined,{maximumFractionDigits:2}):(n??'—');
+const money=(n,c)=>typeof n==='number'?`${n.toLocaleString(undefined,{maximumFractionDigits:2})} ${c}`:'—';
+function setStatus(t,bad=false){$('status').textContent=t;$('status').className='status'+(bad?' bad':'')}
+function totalsFromStats(s){
+  if(!s)return null;
+  const t=Array.isArray(s.total)?s.total[0]:s.total;
+  return t||null;
+}
+function renderOffers(earnings){
+  const rows=Array.isArray(earnings?.earnings)?earnings.earnings:[];
+  if(!rows.length){$('offers').innerHTML='<div class="empty">No reconciled earnings returned for this period.</div>';return}
+  $('offers').innerHTML='<table><thead><tr><th>Brand</th><th>Model</th><th>NDC</th><th>Net revenue</th><th>Earnings</th><th>Status</th></tr></thead><tbody>'+rows.map(x=>`<tr><td>${x.brandName||'—'}</td><td>${x.ratePlanType||'—'}</td><td>${fmt(x.ndc)}</td><td>${money(x.netRevenue,x.currency||'')}</td><td><strong>${money(x.resultEarning??x.publisherEarning,x.payoutCurrency||x.currency||'')}</strong></td><td>${x.businessStatus||x.status||'—'}</td></tr>`).join('')+'</tbody></table>';
+}
+function renderTraffic(stats){
+  const dates=Array.isArray(stats?.dates)?stats.dates:[];
+  if(!dates.length){$('traffic').innerHTML='<div class="empty">Statistics endpoint is not configured yet, or returned no daily rows.</div>';return}
+  $('traffic').innerHTML='<table><thead><tr><th>Date</th><th>Clicks</th><th>Regs</th><th>NDC</th><th>Net revenue</th><th>Earnings</th></tr></thead><tbody>'+dates.map(x=>`<tr><td>${x.date||'—'}</td><td>${fmt(x.clicks)}</td><td>${fmt(x.registrations)}</td><td>${fmt(x.ndc)}</td><td>${money(x.netRevenue,stats.currency||'')}</td><td>${money(x.earnings,stats.currency||'')}</td></tr>`).join('')+'</tbody></table>';
+}
+$('load').onclick=async()=>{
+  setStatus('Syncing RevenueLab…');
+  const q=new URLSearchParams({dateFrom:$('from').value,dateTo:$('to').value,currency:$('currency').value,groupBy:$('group').value});
+  const key=$('key').value.trim();
+  try{
+    const r=await fetch('/api/revenuelab/dashboard?'+q.toString(),{headers:key?{'x-rawedge-admin-key':key}:{}});
+    const data=await r.json();
+    if(!r.ok)throw new Error(data.error||`HTTP ${r.status}`);
+    const st=totalsFromStats(data.statistics);const et=data.earnings?.totals?.totalEarnings?.amount ?? data.earnings?.totals?.income?.amount;
+    $('clicks').textContent=fmt(st?.clicks);$('regs').textContent=fmt(st?.registrations);$('ndc').textContent=fmt(st?.ndc);$('deposits').textContent=money(st?.purchaseAmount,data.currency);$('net').textContent=money(st?.netRevenue,data.currency);$('earnings').textContent=money(et,data.earnings?.totals?.totalEarnings?.currency||data.currency);$('currencyLabel').textContent=data.currency;
+    renderOffers(data.earnings);renderTraffic(data.statistics);setStatus(`Synced ${data.generatedAt}`);
+  }catch(e){setStatus(e.message||'Sync failed.',true)}
+};
+</script>
+</body>
+</html>
