@@ -86,7 +86,8 @@ module.exports = async (req, res) => {
   if (req.method !== 'GET') return send(res, 405, { error: 'Method not allowed.' });
 
   const adminKey = process.env.RAWEDGE_ADMIN_KEY;
-  if (adminKey && req.headers['x-rawedge-admin-key'] !== adminKey) {
+  if (!adminKey) return send(res, 500, { error: 'RawEdge admin key is not configured.' });
+  if (req.headers['x-rawedge-admin-key'] !== adminKey) {
     return send(res, 401, { error: 'Unauthorized.' });
   }
 
